@@ -41,8 +41,16 @@ class ProductFactory:
         **kwargs: Any,
     ) -> ProductRFRSwap:
 
-        #TODO
-        pass
+        bdc = data_convention.business_day_convention
+        holidays = data_convention.holiday_convention
+        effective_date, term_or_termination_date = cls._swap_dates(value_date, axis1, bdc, holidays)
+        return ProductRFRSwap(
+            effective_date, term_or_termination_date, data_convention.payment_offset,
+            data_convention.index_str, values,
+            PayOrReceive.from_string(kwargs.get("pay_or_rec", "receive")),
+            kwargs.get("notional", 1e4), data_convention.acc_period, data_convention.acc_basis,
+            data_convention.acc_period, bdc, holidays, 0.0, data_convention.compounding_method,
+        )
 
     @classmethod
     def create_overnight_index_basis_swap(
@@ -54,8 +62,16 @@ class ProductFactory:
         **kwargs: Any,
     ) -> ProductOvernightIndexBasisSwap:
 
-        #TODO
-        pass
+        bdc = data_convention.business_day_convention
+        holidays = data_convention.holiday_convention
+        effective_date, term_or_termination_date = cls._swap_dates(value_date, axis1, bdc, holidays)
+        return ProductOvernightIndexBasisSwap(
+            effective_date, term_or_termination_date, data_convention.payment_offset,
+            data_convention.index_1_str, data_convention.index_2_str, values,
+            PayOrReceive.from_string(kwargs.get("pay_or_rec", "receive")),
+            kwargs.get("notional", 1e4), data_convention.acc_period_1, data_convention.acc_basis,
+            data_convention.acc_period_2, bdc, holidays, data_convention.compounding_method,
+        )
 
     @classmethod
     def create_fra(cls, value_date, axis1, data_convention, values, **kwargs):
@@ -73,6 +89,15 @@ class ProductFactory:
             values, PayOrReceive.from_string(kwargs.get("pay_or_rec", "receive")),
             kwargs.get("notional", 1e4), data_convention.acc_basis, bdc, holidays,
         )
+
+    @classmethod
+    def _swap_dates(cls, value_date, axis1, bdc, holidays):
+        first, second = cls._tokenize_axis1(axis1)
+        if second is None:
+            return value_date, first
+        if first.is_term():
+            return add_period(value_date, first.get_term(), bdc, holidays), second
+        return first.get_date(), second
 
     @staticmethod
     def _tokenize_axis1(axis1):
